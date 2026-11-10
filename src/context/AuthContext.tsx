@@ -1,58 +1,43 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { authService } from '../services/authService';
-import { tokenStore } from '../lib/api';
-import type { SignInPayload, SignUpPayload, User } from '../types';
+import { session } from '../lib/api';
+import type { SignInPayload, SignUpOutcome, SignUpPayload, User } from '../types';
 
 interface AuthContextValue {
   user: User | null;
-  /** true while we check for an existing session on first load */
-  initializing: boolean;
   signIn: (payload: SignInPayload) => Promise<void>;
-  signUp: (payload: SignUpPayload) => Promise<void>;
+  /** Resolves 'signed_in' (token saved) or 'created' (account made, user must sign in). */
+  signUp: (payload: SignUpPayload) => Promise<SignUpOutcome>;
   signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [initializing, setInitializing] = useState(true);
-
-  // Restore session on page refresh
-  useEffect(() => {
-    if (!tokenStore.get()) {
-      setInitializing(false);
-      return;
-    }
-    authService
-      .me()
-      .then(setUser)
-      .catch(() => tokenStore.clear())
-      .finally(() => setInitializing(false));
-  }, []);
+  // Restore the saved session on page refresh (token + user are stored together)
+  const [user, setUser] = useState<User | null>(() => (session.token() ? session.user<User>() : null));
 
   const signIn = useCallback(async (payload: SignInPayload) => {
     const res = await authService.signIn(payload);
-    tokenStore.set(res.token, payload.remember);
+    session.save(res.token, res.user, payload.remember);
     setUser(res.user);
   }, []);
 
-  const signUp = useCallback(async (payload: SignUpPayload) => {
+  const signUp = useCallback(async (payload: SignUpPayload): Promise<SignUpOutcome> => {
     const res = await authService.signUp(payload);
-    tokenStore.set(res.token, payload.remember);
-    setUser(res.user);
+    if (res.status === 'signed_in') {
+      session.save(res.token, res.user, payload.remember);
+      setUser(res.user);
+    }
+    return res;
   }, []);
 
   const signOut = useCallback(() => {
-    authService.signOut();
+    session.clear();
     setUser(null);
   }, []);
 
-  const value = useMemo(
-    () => ({ user, initializing, signIn, signUp, signOut }),
-    [user, initializing, signIn, signUp, signOut],
-  );
-
+  const value = useMemo(() => ({ user, signIn, signUp, signOut }), [user, signIn, signUp, signOut]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

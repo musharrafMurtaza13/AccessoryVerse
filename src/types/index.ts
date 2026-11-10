@@ -1,3 +1,7 @@
+/** Result of sign up: logged in right away, or account created and the user must sign in. */
+export type SignUpOutcome =  | ({ status: 'signed_in' } & AuthResponse)   | { status: 'created'; email: string };
+
+
 export type ListingStatus = 'Active' | 'Processing' | 'Sold';
 
 export interface Listing {

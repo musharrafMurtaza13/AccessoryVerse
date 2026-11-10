@@ -1,68 +1,62 @@
-import { tokenStore, USE_MOCK_AUTH } from '../lib/api';
-import { neonAuth } from '../lib/neon';
-import type { AuthResponse, SignInPayload, SignUpPayload, User } from '../types';
+import { request, SIGNIN_PATH, SIGNUP_PATH, USE_MOCK_AUTH } from '../lib/api';
+import type { AuthResponse, SignInPayload, SignUpOutcome, SignUpPayload, User } from '../types';
 
 /**
- * REAL MODE: email + password go straight to Neon Auth (no Go involved).
- * Neon returns a session; its token is returned here and saved by AuthContext.
+ * Go API:
+ *   POST {SIGNUP_PATH}  body: { name, email, password }
+ *   POST {SIGNIN_PATH}  body: { email, password }
+ *
+ * The response can be any of these shapes, we accept all of them:
+ *   { token, user: {name,email} }  |  { access_token: "..." }  |  { data: { token, user } }
+ * If sign up returns no token, the user is told to sign in.
  */
-async function readSession(): Promise<AuthResponse> {
-  const { data } = await neonAuth.getSession();
-  if (!data?.session || !data?.user) {
-    throw new Error('Account created, but no session was started. Verify your email, then sign in.');
-  }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseAuth(res: any, fallback: User): AuthResponse | null {
+  const root = res?.data ?? res ?? {};
+  const token: string | undefined = root.token ?? root.access_token ?? root.jwt ?? res?.token;
+  if (!token) return null;
+  const u = root.user ?? res?.user ?? {};
   return {
-    token: data.session.token,
-    user: { name: data.user.name ?? data.user.email.split('@')[0], email: data.user.email },
+    token,
+    user: {
+      name: u.name ?? u.full_name ?? root.name ?? fallback.name,
+      email: u.email ?? root.email ?? fallback.email,
+    },
   };
 }
 
-const neonAuthService = {
-  signUp: async ({ name, email, password }: SignUpPayload): Promise<AuthResponse> => {
-    const result = await neonAuth.signUp.email({ name, email, password });
-    if (result.error) throw new Error(result.error.message ?? 'Sign up failed');
-    return readSession();
+const goAuthService = {
+  signUp: async ({ name, email, password }: SignUpPayload): Promise<SignUpOutcome> => {
+    const res = await request<unknown>(SIGNUP_PATH, {
+      method: 'POST',
+      body: JSON.stringify({ name, email, password }),
+    });
+    const auth = parseAuth(res, { name, email });
+    return auth ? { status: 'signed_in', ...auth } : { status: 'created', email };
   },
+
   signIn: async ({ email, password }: SignInPayload): Promise<AuthResponse> => {
-    const result = await neonAuth.signIn.email({ email, password });
-    if (result.error) throw new Error(result.error.message ?? 'Sign in failed');
-    return readSession();
-  },
-  me: async (): Promise<User> => (await readSession()).user,
-  signOut: async () => {
-    await neonAuth.signOut();
+    const res = await request<unknown>(SIGNIN_PATH, {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    const auth = parseAuth(res, { name: email.split('@')[0], email });
+    if (!auth) throw new Error('Sign in worked but the server did not return a token.');
+    return auth;
   },
 };
 
-// ---- Fake auth (only when VITE_NEON_AUTH_URL is empty) ----
-const MOCK_USER_KEY = 'coders_shop_mock_user';
+// ---- Fake auth (VITE_USE_MOCK_AUTH=true) ----
 const mockAuthService = {
-  signUp: async ({ name, email }: SignUpPayload): Promise<AuthResponse> => {
-    const user = { name, email };
-    localStorage.setItem(MOCK_USER_KEY, JSON.stringify(user));
-    return { user, token: 'mock-token' };
-  },
-  signIn: async ({ email }: SignInPayload): Promise<AuthResponse> => {
-    const user = { name: email.split('@')[0], email };
-    localStorage.setItem(MOCK_USER_KEY, JSON.stringify(user));
-    return { user, token: 'mock-token' };
-  },
-  me: async (): Promise<User> => {
-    const raw = localStorage.getItem(MOCK_USER_KEY);
-    if (!raw) throw new Error('Not signed in');
-    return JSON.parse(raw) as User;
-  },
-  signOut: async () => {
-    localStorage.removeItem(MOCK_USER_KEY);
-  },
+  signUp: async ({ name, email }: SignUpPayload): Promise<SignUpOutcome> => ({
+    status: 'signed_in',
+    user: { name, email },
+    token: 'mock-token',
+  }),
+  signIn: async ({ email }: SignInPayload): Promise<AuthResponse> => ({
+    user: { name: email.split('@')[0], email },
+    token: 'mock-token',
+  }),
 };
 
-const impl = USE_MOCK_AUTH ? mockAuthService : neonAuthService;
-
-export const authService = {
-  ...impl,
-  signOut: async () => {
-    tokenStore.clear();
-    await impl.signOut().catch(() => undefined);
-  },
-};
+export const authService = USE_MOCK_AUTH ? mockAuthService : goAuthService;
