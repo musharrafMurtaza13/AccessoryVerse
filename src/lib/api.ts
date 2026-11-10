@@ -1,11 +1,15 @@
 /**
- * Tiny fetch wrapper for the Go backend.
- * - Base URL comes from VITE_API_URL
- * - Sends the JWT as "Authorization: Bearer <token>"
- * - VITE_USE_MOCK=true (default) makes services use fake in-browser data
+ * Fetch wrapper for the Go API on Render.
+ * Sends the saved Neon token as "Authorization: Bearer <token>" when signed in.
  */
-export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
-export const USE_MOCK: boolean = import.meta.env.VITE_USE_MOCK !== 'false';
+export const API_URL: string = (
+  import.meta.env.VITE_API_URL ?? 'https://online-api-with-golang-monolith.onrender.com'
+).replace(/\/$/, '');
+
+export const NEON_AUTH_URL: string = import.meta.env.VITE_NEON_AUTH_URL ?? '';
+export const USE_MOCK_AUTH: boolean = !NEON_AUTH_URL;
+// If USE_MOCK_AUTH is true, the app will not use Neon for authentication and will instead use a mock auth flow.
+export const USE_MOCK_LISTINGS: boolean = import.meta.env.VITE_USE_MOCK_LISTINGS === 'true';
 
 const TOKEN_KEY = 'coders_shop_token';
 
@@ -51,5 +55,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     throw new ApiError(message, res.status);
   }
 
-  return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }

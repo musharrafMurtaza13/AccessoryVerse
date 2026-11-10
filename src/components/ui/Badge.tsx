@@ -3,6 +3,7 @@ import type { ListingStatus } from '../../types';
 const styles: Record<ListingStatus, string> = {
   Processing: 'bg-[#362312] text-[#d97706] border-[#523315]',
   Active: 'bg-[#0f2e22] text-[#10b981] border-[#164735]',
+  Sold: 'bg-[#1e1e22] text-gray-400 border-zinc-700',
 };
 
 export function StatusBadge({ status }: { status: ListingStatus }) {

@@ -1,4 +1,4 @@
-export type ListingStatus = 'Active' | 'Processing';
+export type ListingStatus = 'Active' | 'Processing' | 'Sold';
 
 export interface Listing {
   id: number | string;

@@ -5,7 +5,7 @@ import { Button } from '../ui/Button';
 import { Alert } from '../ui/Alert';
 import type { ListingStatus, NewListing } from '../../types';
 
-const STATUSES: readonly ListingStatus[] = ['Active', 'Processing'];
+const STATUSES: readonly ListingStatus[] = ['Active', 'Processing', 'Sold'];
 const emptyForm: NewListing = { title: '', city: '', price: '', description: '', status: 'Active' };
 
 interface ListingFormModalProps {
@@ -51,7 +51,7 @@ export function ListingFormModal({ open, onClose, onSubmit }: ListingFormModalPr
 
         <div className="grid grid-cols-2 gap-3">
           <Input label="City" required placeholder="e.g. Mumbai" value={form.city} onChange={(e) => update({ city: e.target.value })} />
-          <Input label="Price (₹)" type="number" required placeholder="50000" value={form.price} onChange={(e) => update({ price: e.target.value })} />
+          <Input label="Price (Rs)" type="number" required placeholder="50000" value={form.price} onChange={(e) => update({ price: e.target.value })} />
         </div>
 
         <Textarea

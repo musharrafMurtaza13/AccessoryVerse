@@ -33,7 +33,7 @@ export function ListingsTable({ listings, loading, onDelete }: ListingsTableProp
           <tbody className={`divide-y ${t.tableDivide}`}>
             {loading ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-gray-500">Loading listings…</td>
+                <td colSpan={7} className="py-12 text-center text-gray-500">Loading listings… (the free Render server can take up to a minute to wake up)</td>
               </tr>
             ) : listings.length === 0 ? (
               <tr>

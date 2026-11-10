@@ -9,7 +9,7 @@ import { useListings } from '../hooks/useListings';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
-const STATUS_FILTERS = ['All', 'Active', 'Processing'] as const;
+const STATUS_FILTERS = ['All', 'Active', 'Processing', 'Sold'] as const;
 
 export function ListingsPage({ onRequireAuth }: { onRequireAuth: () => void }) {
   const { t } = useTheme();
@@ -19,6 +19,16 @@ export function ListingsPage({ onRequireAuth }: { onRequireAuth: () => void }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [formOpen, setFormOpen] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  const handleDelete = async (id: string | number) => {
+    setActionError('');
+    try {
+      await removeListing(id);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not delete listing.');
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = searchTerm.toLowerCase();
@@ -45,7 +55,7 @@ export function ListingsPage({ onRequireAuth }: { onRequireAuth: () => void }) {
         </Button>
       </div>
 
-      <Alert message={error} />
+      <Alert message={error || actionError} />
 
       <ListingFilters
         searchTerm={searchTerm}
@@ -55,7 +65,7 @@ export function ListingsPage({ onRequireAuth }: { onRequireAuth: () => void }) {
         statuses={STATUS_FILTERS}
       />
 
-      <ListingsTable listings={filtered} loading={loading} onDelete={removeListing} />
+      <ListingsTable listings={filtered} loading={loading} onDelete={handleDelete} />
 
       <ListingFormModal open={formOpen} onClose={() => setFormOpen(false)} onSubmit={addListing} />
     </main>
