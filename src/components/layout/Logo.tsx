@@ -24,7 +24,7 @@ export function Brand({ onClick }: { onClick?: () => void }) {
       <div className="group-hover:scale-105 transition-transform">
         <PandaLogo />
       </div>
-      <span className="font-serif italic text-2xl font-semibold tracking-tight">Coder's Shop</span>
+      <span className="font-serif italic text-2xl font-semibold tracking-tight">AccessoryVerse</span>
     </div>
   );
 }

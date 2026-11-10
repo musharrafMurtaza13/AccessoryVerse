@@ -1,4 +1,4 @@
-# Coder's Shop
+# Accessory Verse
 
 React + TypeScript + Vite + Tailwind.
 

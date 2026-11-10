@@ -105,7 +105,7 @@ export function AuthModal({ mode, onClose, onSwitchMode, onAuthenticated }: Auth
       onClose={close}
       heavyBackdrop
       leading={<PandaLogo size={28} />}
-      title={isSignIn ? "Sign In to Coder's Shop" : 'Create an Account'}
+      title={isSignIn ? "Sign In to AccessoryVerse" : 'Create an Account'}
     >
       <Alert message={error} />
 
